@@ -33,10 +33,14 @@ Use the `render.yaml` file for infrastructure as code deployment, or configure m
      - `FRONTEND_URL` (set in Render dashboard)
      - `LOG_LEVEL=info`
 
-2. **Client Service**:
-   - Service Type: Static Site
-   - Build Command: `cd client && npm install && npm run build`
-   - Publish Directory: `client/dist`
+### GitHub Pages Configuration
+
+The client is deployed to GitHub Pages using GitHub Actions:
+
+- Build Command: `cd client && npm install && npm run build`
+- Deploy Directory: `client/dist`
+- Base URL: Automatically set to repository path
+- Enable GitHub Pages in repository settings (Settings > Pages > Source: Deploy from a branch > gh-pages)
 
 ## HTTPS/SSL Configuration
 
@@ -92,10 +96,11 @@ VITE_USE_FAKE_USER=false
 ## Deployment Steps
 
 1. **Push to GitHub**: Commit and push all changes to main branch
-2. **GitHub Actions**: Will automatically run tests and deploy
-3. **Render**: Services will rebuild and redeploy automatically
-4. **DNS**: Point your custom domain to Render (optional)
-5. **SSL**: Automatic SSL certificates will be provisioned
+2. **GitHub Actions**: Will automatically run tests, deploy server to Render, and deploy client to GitHub Pages
+3. **Render**: Server will rebuild and redeploy automatically
+4. **GitHub Pages**: Client will be deployed to https://username.github.io/repository-name/
+5. **DNS**: Point your custom domain to Render for API and GitHub Pages for client (optional)
+6. **SSL**: Automatic SSL certificates will be provisioned for both
 
 ## Monitoring Dashboard
 

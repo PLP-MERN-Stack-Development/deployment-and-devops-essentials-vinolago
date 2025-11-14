@@ -4,7 +4,7 @@
   "main": "server.js",
   "scripts": {
     "test": "jest --runInBand",
-    "test:ci": "jest --ci --runInBand",
+    "test:ci": "jest --ci --runInBand --coverage",
     "start": "node start.js",
     "dev": "cross-env NODE_ENV=development nodemon start.js"
   },

@@ -33,16 +33,42 @@ jobs:
         run: cd server && npm test
 
       - name: Build client
-        run: cd client && npm run build
+        run: cd client && VITE_BASE_URL="/${{ github.event.repository.name }}/" npm run build
 
-  deploy:
+  deploy-server:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
 
     steps:
-      - name: Deploy to Render
+      - name: Deploy Server to Render
         uses: johnbeynon/render-deploy-action@v0.0.8
         with:
           service-id: ${{ secrets.RENDER_SERVICE_ID }}
           api-key: ${{ secrets.RENDER_API_KEY }}
+
+  deploy-client:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: "npm"
+
+      - name: Install client dependencies
+        run: cd client && npm ci
+
+      - name: Build client
+        run: cd client && npm run build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: client/dist
