@@ -1,0 +1,266 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+env:
+  NODE_VERSION: "20.x"
+
+jobs:
+  # Code Quality and Linting
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install server dependencies
+        run: cd server && npm ci
+
+      - name: Install client dependencies
+        run: cd client && npm ci
+
+      - name: Run server linting
+        run: cd server && npm run lint
+
+      - name: Run client linting
+        run: cd client && npm run lint
+
+      - name: Check code formatting
+        run: |
+          cd server && npx prettier --check .
+          cd client && npx prettier --check .
+
+  # Security Audit
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install server dependencies
+        run: cd server && npm ci
+
+      - name: Install client dependencies
+        run: cd client && npm ci
+
+      - name: Run security audit
+        run: |
+          cd server && npm audit --audit-level=moderate
+          cd client && npm audit --audit-level=moderate
+
+      - name: Run Snyk security check
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+
+  # Test Suite
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+
+      - name: Install server dependencies
+        run: cd server && npm ci
+
+      - name: Install client dependencies
+        run: cd client && npm ci
+
+      - name: Run server tests
+        run: cd server && npm run test:ci
+
+      - name: Run client tests
+        run: cd client && npm test -- --ci --coverage --watchAll=false
+
+      - name: Upload server coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: server/coverage/coverage-final.json
+          flags: server
+          name: server-coverage
+
+      - name: Upload client coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: client/coverage/coverage-final.json
+          flags: client
+          name: client-coverage
+
+  # Build and Deploy Staging
+  deploy-staging:
+    needs: [code-quality, security, test]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Build client for staging
+        run: |
+          cd client
+          cp .env.staging .env.production
+          npm ci
+          npm run build
+
+      - name: Deploy server to staging
+        uses: johnbeynon/render-deploy-action@v0.0.8
+        with:
+          service-id: ${{ secrets.RENDER_SERVICE_ID_STAGING }}
+          api-key: ${{ secrets.RENDER_API_KEY_STAGING }}
+
+      - name: Deploy client to staging
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: client/dist
+          destination_branch: gh-pages-staging
+
+      - name: Run staging smoke tests
+        run: |
+          sleep 30
+          curl -f ${{ secrets.STAGING_API_URL }}/health || exit 1
+          curl -f ${{ secrets.STAGING_FRONTEND_URL }} || exit 1
+
+  # Build and Deploy Production
+  deploy-production:
+    needs: [code-quality, security, test]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Build client for production
+        run: |
+          cd client
+          cp .env.production .env
+          npm ci
+          npm run build
+
+      - name: Create deployment tag
+        id: create_tag
+        run: |
+          TAG="v1.0.0-${GITHUB_SHA::8}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Deploy server to production
+        uses: johnbeynon/render-deploy-action@v0.0.8
+        with:
+          service-id: ${{ secrets.RENDER_SERVICE_ID }}
+          api-key: ${{ secrets.RENDER_API_KEY }}
+          deploy-hook: ${{ secrets.RENDER_DEPLOY_HOOK }}
+
+      - name: Deploy client to production
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: client/dist
+          destination_branch: gh-pages
+
+      - name: Wait for deployment to be ready
+        run: sleep 60
+
+      - name: Run production smoke tests
+        run: |
+          curl -f ${{ secrets.PRODUCTION_API_URL }}/health || exit 1
+          curl -f ${{ secrets.PRODUCTION_FRONTEND_URL }} || exit 1
+
+      - name: Create GitHub release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.create_tag.outputs.tag }}
+          release_name: Release ${{ steps.create_tag.outputs.tag }}
+          body: |
+            ## Changes in this release
+
+            - Automated deployment from commit ${{ github.sha }}
+            - All tests passed
+            - Production deployment completed
+          draft: false
+          prerelease: false
+
+  # Rollback Job (Manual trigger)
+  rollback:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    environment: production
+
+    steps:
+      - name: Rollback server deployment
+        run: |
+          echo "Rolling back server to previous deployment"
+          # Implement rollback logic here
+          # This could involve calling Render API to rollback
+
+      - name: Rollback client deployment
+        run: |
+          echo "Rolling back client to previous version"
+          # Implement rollback logic here
+          # This could involve reverting the gh-pages branch
+
+  # Notification
+  notify:
+    needs: [deploy-staging, deploy-production]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Notify deployment status
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_MESSAGE: |
+            Deployment ${{ job.status }} for ${{ github.ref }}
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+        if: env.SLACK_WEBHOOK != ''
+
+      - name: Create deployment record
+        run: |
+          echo "Recording deployment status: ${{ job.status }}"

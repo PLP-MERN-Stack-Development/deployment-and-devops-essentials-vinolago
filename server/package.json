@@ -6,7 +6,11 @@
     "test": "jest --runInBand",
     "test:ci": "jest --ci --runInBand --coverage",
     "start": "node start.js",
-    "dev": "cross-env NODE_ENV=development nodemon start.js"
+    "dev": "cross-env NODE_ENV=development nodemon start.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "security": "npm audit --audit-level=moderate",
+    "quality": "npm run lint && npm run test && npm run security"
   },
   "keywords": [],
   "author": "",
@@ -25,6 +29,7 @@
   },
   "devDependencies": {
     "cross-env": "^10.1.0",
+    "eslint": "^9.36.0",
     "jest": "^30.2.0",
     "mongodb-memory-server": "^10.2.3",
     "nodemon": "^3.1.10",
