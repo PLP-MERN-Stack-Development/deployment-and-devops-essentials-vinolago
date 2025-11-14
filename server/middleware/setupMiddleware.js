@@ -6,8 +6,13 @@ const helmet = require('helmet');
 const path = require('path');
 const logger = require('./logger');
 const errorHandler = require('./errorHandler');
+const { responseTimeMiddleware, requestMetricsMiddleware } = require('./monitoring');
 
 const setupMiddleware = (app) => {
+    // monitoring middleware
+    app.use(responseTimeMiddleware);
+    app.use(requestMetricsMiddleware);
+
     // security headers
     app.use(helmet());
 
