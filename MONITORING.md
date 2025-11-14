@@ -1,6 +1,6 @@
-# Application Monitoring Setup Guide
+# Application Monitoring & Performance Setup Guide
 
-This document provides comprehensive instructions for setting up and using the monitoring system for the MERN Blog application.
+This document provides comprehensive instructions for setting up and using the monitoring and performance system for the MERN Blog application.
 
 ## 📋 Table of Contents
 
@@ -8,10 +8,11 @@ This document provides comprehensive instructions for setting up and using the m
 2. [Uptime Monitoring](#uptime-monitoring)
 3. [Error Tracking with Sentry](#error-tracking-with-sentry)
 4. [Client-Side Monitoring](#client-side-monitoring)
-5. [Monitoring Dashboards](#monitoring-dashboards)
-6. [Alert Configuration](#alert-configuration)
-7. [Environment Variables](#environment-variables)
-8. [API Reference](#api-reference)
+5. [Performance Monitoring](#performance-monitoring)
+6. [Monitoring Dashboards](#monitoring-dashboards)
+7. [Alert Configuration](#alert-configuration)
+8. [Environment Variables](#environment-variables)
+9. [API Reference](#api-reference)
 
 ## 🔍 Health Check Endpoints
 
@@ -233,6 +234,171 @@ reportClientError(new Error("Custom error"), {
 import { trackUserAction } from "./monitoring/sentry";
 trackUserAction("button_click", "LoginForm", { buttonId: "login" });
 ```
+
+## 📈 Performance Monitoring
+
+### Server-Side Performance Monitoring
+
+The application includes a comprehensive performance monitoring system that tracks:
+
+#### Key Metrics Tracked
+
+- **Request Performance**: Response times, throughput, error rates
+- **Resource Usage**: CPU, memory, network I/O
+- **Database Performance**: Query times, connection pool status
+- **API Endpoint Performance**: Per-endpoint metrics and slow query detection
+
+#### Features
+
+- Real-time performance tracking
+- Historical data retention
+- Slow request identification
+- Database query monitoring
+- Performance alert thresholds
+
+#### API Endpoints
+
+| Endpoint                         | Description                    | Response |
+| -------------------------------- | ------------------------------ | -------- |
+| `/api/performance/stats`         | Overall performance statistics | 200      |
+| `/api/performance/requests`      | Request performance data       | 200      |
+| `/api/performance/slow-requests` | Slow requests (>1s)            | 200      |
+| `/api/performance/errors`        | Error requests                 | 200      |
+| `/api/performance/endpoints`     | Per-endpoint metrics           | 200      |
+| `/api/performance/database`      | Database performance           | 200      |
+| `/api/performance/resources`     | Resource usage metrics         | 200      |
+| `/api/performance/realtime`      | Real-time performance data     | 200      |
+
+### Client-Side Performance Monitoring
+
+Comprehensive frontend performance tracking including:
+
+#### Core Web Vitals
+
+- **LCP (Largest Contentful Paint)**: Measures loading performance
+- **FID (First Input Delay)**: Measures interactivity
+- **CLS (Cumulative Layout Shift)**: Measures visual stability
+- **FCP (First Contentful Paint)**: Measures user-perceived speed
+- **TTFB (Time to First Byte)**: Measures server response time
+
+#### Additional Metrics
+
+- **Component Render Time**: Tracks React component performance
+- **Network Request Performance**: Monitors API calls and resources
+- **Memory Usage**: JavaScript heap monitoring
+- **Long Task Detection**: Identifies performance bottlenecks
+
+#### Usage Examples
+
+```javascript
+import {
+  frontendPerformanceMonitor,
+  usePerformanceTracking,
+  trackMetric,
+} from "./monitoring/performance";
+
+// Track custom metric
+trackMetric("user_action_duration", 250, { action: "form_submission" });
+
+// In a React component
+function MyComponent() {
+  const performanceTracker = usePerformanceTracking("MyComponent");
+
+  useEffect(() => {
+    // Component logic
+    performanceTracker.endRender();
+  }, []);
+
+  return <div>My Component</div>;
+}
+
+// Get full performance metrics
+const metrics = frontendPerformanceMonitor.getFullMetrics();
+console.log("Performance metrics:", metrics);
+```
+
+### Performance Monitoring Features
+
+#### Request Tracking
+
+```javascript
+// Automatically tracks all requests through middleware
+app.use(performanceMonitor.requestMiddleware());
+```
+
+#### Database Query Monitoring
+
+```javascript
+// Track database queries
+const start = Date.now();
+await db.query("SELECT * FROM users");
+performanceMonitor.trackDatabaseQuery(
+  "SELECT * FROM users",
+  Date.now() - start
+);
+```
+
+#### Real-Time Monitoring
+
+```javascript
+// Get real-time performance data
+const realtime = await fetch("/api/performance/realtime");
+const data = await realtime.json();
+```
+
+### Performance Budgets
+
+The system includes performance budgets with automatic alerting:
+
+| Metric                | Good    | Warning    | Critical |
+| --------------------- | ------- | ---------- | -------- |
+| **Response Time P95** | < 200ms | 200-1000ms | > 1000ms |
+| **Response Time P99** | < 500ms | 500-2000ms | > 2000ms |
+| **Error Rate**        | < 1%    | 1-5%       | > 5%     |
+| **CPU Usage**         | < 50%   | 50-80%     | > 80%    |
+| **Memory Usage**      | < 70%   | 70-85%     | > 85%    |
+
+### Core Web Vitals Standards
+
+| Vital   | Good    | Needs Improvement | Poor    |
+| ------- | ------- | ----------------- | ------- |
+| **LCP** | ≤ 2.5s  | 2.5-4.0s          | > 4.0s  |
+| **FID** | ≤ 100ms | 100-300ms         | > 300ms |
+| **CLS** | ≤ 0.1   | 0.1-0.25          | > 0.25  |
+| **FCP** | ≤ 1.8s  | 1.8-3.0s          | > 3.0s  |
+| **INP** | ≤ 200ms | 200-500ms         | > 500ms |
+
+### Dashboard Configurations
+
+The performance monitoring system includes pre-configured dashboards:
+
+#### Real-Time Dashboard
+
+- Request rate and throughput
+- Response time percentiles (P50, P95, P99)
+- Error rate monitoring
+- Resource usage tracking
+
+#### Trends Dashboard
+
+- 24-hour performance trends
+- Response time patterns
+- Error rate evolution
+- Resource usage over time
+
+#### Application Dashboard
+
+- API endpoint performance
+- Database query analysis
+- Slow request identification
+- Error distribution analysis
+
+#### Infrastructure Dashboard
+
+- CPU and memory usage
+- Network I/O monitoring
+- Database connection pools
+- System resource trends
 
 ## 📈 Monitoring Dashboards
 
@@ -492,6 +658,136 @@ try {
   // Some operation
 } catch (error) {
   reportError(error, { user_id: user.id, action: "login" });
+}
+```
+
+### Performance API Endpoints
+
+#### GET `/api/performance/stats`
+
+Overall performance statistics including request rates, response times, and resource usage.
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "uptime": 3600,
+    "requestRate": 15.5,
+    "totalRequests": 55800,
+    "errorRate": 0.02,
+    "averageResponseTime": 245.6,
+    "responseTimePercentiles": {
+      "p50": 156,
+      "p95": 892,
+      "p99": 1456
+    },
+    "resources": {
+      "cpu": { "usage": 45.2, "history": [...] },
+      "memory": { "heapPercentage": 67, "history": [...] },
+      "network": { "bytesIn": 1024000, "bytesOut": 2048000 }
+    }
+  },
+  "timestamp": "2025-11-14T15:16:31.164Z"
+}
+```
+
+#### GET `/api/performance/requests`
+
+Detailed request performance data with filtering and pagination support.
+
+**Query Parameters:**
+
+- `limit`: Number of results to return (default: 50)
+- `sortBy`: Field to sort by (default: timestamp)
+- `sortOrder`: Sort direction (asc/desc)
+- `statusCode`: Filter by status code
+- `method`: Filter by HTTP method
+- `path`: Filter by URL path
+
+#### GET `/api/performance/slow-requests`
+
+Retrieve slow requests above the specified threshold.
+
+**Query Parameters:**
+
+- `limit`: Maximum number of results (default: 20)
+- `threshold`: Minimum duration in milliseconds (default: 1000)
+
+#### GET `/api/performance/endpoints`
+
+Per-endpoint performance metrics including request counts and response times.
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "endpoints": [
+      {
+        "path": "/api/posts",
+        "method": "GET",
+        "totalRequests": 1245,
+        "averageDuration": 156.7,
+        "statusCodes": { "200": 1200, "404": 45 },
+        "slowest": 2134,
+        "fastest": 23
+      }
+    ],
+    "summary": {
+      "totalEndpoints": 12,
+      "totalRequests": 55800,
+      "averageResponseTime": 245.6,
+      "slowestEndpoint": "/api/posts",
+      "fastestEndpoint": "/health"
+    }
+  }
+}
+```
+
+#### GET `/api/performance/database`
+
+Database performance metrics including query times and connection pool status.
+
+#### GET `/api/performance/resources`
+
+System resource usage metrics including CPU, memory, and network statistics.
+
+#### GET `/api/performance/realtime`
+
+Real-time performance data for monitoring dashboards.
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "timestamp": "2025-11-14T15:16:31.164Z",
+    "status": "healthy",
+    "alerts": [],
+    "metrics": {
+      "requestsPerSecond": 15.5,
+      "errorRate": 0.02,
+      "responseTime": 245.6,
+      "cpuUsage": 45.2,
+      "memoryUsage": 67
+    }
+  }
+}
+```
+
+#### POST `/api/performance/reset`
+
+Reset all performance metrics (requires authentication).
+
+**Body:**
+
+```json
+{
+  "apiKey": "your-monitoring-api-key"
 }
 ```
 

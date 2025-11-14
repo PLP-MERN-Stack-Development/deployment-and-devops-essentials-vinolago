@@ -27,6 +27,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.19.2",
     "response-time": "^2.3.4",
+    "uuid": "^10.0.0",
     "winston": "^3.18.3"
   },
   "devDependencies": {
