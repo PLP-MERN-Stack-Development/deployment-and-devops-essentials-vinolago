@@ -4,6 +4,9 @@ const dotenv = require('dotenv');
 const { connectDB } = require('./config/db');
 const app = require('./server');
 
+// Set NODE_ENV to production if not already set (for production deployments)
+process.env.NODE_ENV = process.env.NODE_ENV || 'production';
+
 dotenv.config();
 
 const PORT = process.env.PORT || 5000;
