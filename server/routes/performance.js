@@ -1,6 +1,6 @@
 // API Performance Tracking Routes
 const express = require('express');
-const { performanceMonitor } = require('../monitoring/performance-monitor');
+const { performanceMonitor } = require('../../monitoring/performance-monitor');
 const router = express.Router();
 
 // Get performance statistics

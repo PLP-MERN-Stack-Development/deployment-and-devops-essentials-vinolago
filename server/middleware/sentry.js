@@ -122,12 +122,20 @@ function initSentry() {
 
 // Request handler that wraps all requests with Sentry
 function requestHandler() {
-  return Sentry.Handlers.requestHandler();
+  if (process.env.SENTRY_DSN && Sentry.Handlers) {
+    return Sentry.Handlers.requestHandler();
+  }
+  // Return no-op middleware if Sentry is not initialized
+  return (req, res, next) => next();
 }
 
 // Error handler that sends errors to Sentry
 function errorHandler() {
-  return Sentry.Handlers.errorHandler();
+  if (process.env.SENTRY_DSN && Sentry.Handlers) {
+    return Sentry.Handlers.errorHandler();
+  }
+  // Return no-op middleware if Sentry is not initialized
+  return (err, req, res, next) => next(err);
 }
 
 // Manual error reporting function

@@ -1,6 +1,7 @@
 // Client-side Sentry error monitoring configuration
 import * as Sentry from '@sentry/react';
-import { BrowserTracing } from '@sentry/react';
+import { browserTracingIntegration } from '@sentry/react';
+import React from 'react';
 
 // Initialize Sentry for client-side error tracking
 export function initClientSentry() {
@@ -19,11 +20,8 @@ export function initClientSentry() {
     
     // Enable automatic instrumentation
     integrations: [
-      new BrowserTracing({
+      browserTracingIntegration({
         // Performance monitoring
-        routingInstrumentation: Sentry.reactRouterV6Instrumentation(
-          React.useEffect
-        ),
         tracePropagationTargets: ['localhost', /^https:\/\/yourdomain\.com\/api/],
       }),
     ],
@@ -83,37 +81,40 @@ export function initClientSentry() {
   console.log('✅ Client-side Sentry error tracking initialized');
 }
 
+// Error fallback component
+const ErrorFallback = ({ error, resetError }) => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-6">
+      <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full">
+        <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
+        </svg>
+      </div>
+      <div className="mt-4 text-center">
+        <h3 className="text-lg font-medium text-gray-900">
+          Something went wrong
+        </h3>
+        <p className="mt-2 text-sm text-gray-500">
+          We're sorry, but an unexpected error occurred. Our team has been notified.
+        </p>
+        <div className="mt-4">
+          <button
+            onClick={resetError}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 // Custom error boundary component with Sentry integration
 export const ErrorBoundary = Sentry.withErrorBoundary(
   ({ children }) => children,
   {
-    fallback: ({ error, resetError }) => (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-6">
-          <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full">
-            <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-          </div>
-          <div className="mt-4 text-center">
-            <h3 className="text-lg font-medium text-gray-900">
-              Something went wrong
-            </h3>
-            <p className="mt-2 text-sm text-gray-500">
-              We're sorry, but an unexpected error occurred. Our team has been notified.
-            </p>
-            <div className="mt-4">
-              <button
-                onClick={resetError}
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
-                Try again
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    ),
+    fallback: ErrorFallback,
     showDialog: import.meta.env.DEV, // Show dialog in development
     dialogOptions: {
       title: 'Application Error',

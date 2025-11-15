@@ -6,7 +6,7 @@ initSentry();
 
 const express = require('express');
 const setupMiddleware = require('./middleware/setupMiddleware');
-const { performanceMonitor } = require('./monitoring/performance-monitor');
+const { performanceMonitor } = require('../monitoring/performance-monitor');
 
 // Import routes
 const postRoutes = require('./routes/posts');

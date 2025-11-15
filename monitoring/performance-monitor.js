@@ -1,7 +1,7 @@
 // Advanced Performance Monitoring System
 const os = require('os');
 const process = require('process');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID: uuidv4 } = require('crypto');
 
 // Performance metrics storage
 class PerformanceMonitor {
@@ -284,13 +284,11 @@ class PerformanceMonitor {
       percentage: ((os.totalmem() - os.freemem()) / os.totalmem()) * 100
     };
     
-    // Process memory
-    this.metrics.resources.memory.process = {
-      rss: memUsage.rss,
-      heapUsed: memUsage.heapUsed,
-      heapTotal: memUsage.heapTotal,
-      external: memUsage.external
-    };
+    // Process memory - update values, preserve history
+    this.metrics.resources.memory.process.rss = memUsage.rss;
+    this.metrics.resources.memory.process.heapUsed = memUsage.heapUsed;
+    this.metrics.resources.memory.process.heapTotal = memUsage.heapTotal;
+    this.metrics.resources.memory.process.external = memUsage.external;
     
     this.metrics.resources.memory.process.history.push({
       timestamp: now,
@@ -299,8 +297,12 @@ class PerformanceMonitor {
       heapTotal: memUsage.heapTotal
     });
     
-    // System memory
-    this.metrics.resources.memory.system = systemMem;
+    // System memory - update values, preserve history
+    this.metrics.resources.memory.system.total = systemMem.total;
+    this.metrics.resources.memory.system.free = systemMem.free;
+    this.metrics.resources.memory.system.used = systemMem.used;
+    this.metrics.resources.memory.system.percentage = systemMem.percentage;
+    
     this.metrics.resources.memory.system.history.push({
       timestamp: now,
       total: systemMem.total,
